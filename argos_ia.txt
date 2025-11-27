@@ -1,0 +1,15 @@
+    Argos IA será como nos vamos a referir al modelo
+entrenado de YOLO. Especificamente este modelo fue
+logrado con la version 'yolo11s.pt' y tecnicamente con
+esta configuración de entrenamiento.
+
+resultado = model.train(
+    data = '/content/gun-knife-thesis-11/data.yaml',        
+    epochs = 100,                                           # Número de veces que el modelo verá TODO el dataset
+    patience = 30,                                          # Parar si no mejora en 30 épocas
+    imgsz = 640,                                            # Tamaño de entrada de las imágenes (píxeles)
+    batch = 16,                                             # Número de imágenes procesadas en paralelo por la GPU
+    device = 'cuda',                                        # Usa GPU (NVIDIA) para acelerar el entrenamiento
+    project = 'entrenamiento_argos_ia',                     
+    name = 'yolo_argos_ia'                                  
+)

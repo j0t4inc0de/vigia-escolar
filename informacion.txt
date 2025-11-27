@@ -1,0 +1,4 @@
+idea inicial:
+
+Hacer aplicacion que detecte armas en colegios/liceos/institutos/universidad
+Al detectar suene una sirena
