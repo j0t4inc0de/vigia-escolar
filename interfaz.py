@@ -925,7 +925,8 @@ class ArgosGUI(QWidget):
     def launch_camera(self):
         """Lanzar cámara"""
         try:
-            self.process = subprocess.Popen(["python", DETECCION_SCRIPT])
+            # self.process = subprocess.Popen(["python", DETECCION_SCRIPT]) #Esto usa el python del sistema
+            self.process = subprocess.Popen([sys.executable, DETECCION_SCRIPT]) # Este usa el python del venv
             self.camera_btn.setEnabled(False)
             self.return_btn.show()
             self.status_label.setText("🔴 Detección Activa")
