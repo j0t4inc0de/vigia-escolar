@@ -289,7 +289,7 @@ class ModernImageViewer(QDialog):
         """)
 
 class OptimizedScrollArea(QScrollArea):
-    """ScrollArea optimizado simple"""
+    """ScrollArea optimizado sin botones de scroll"""
     def __init__(self):
         super().__init__()
         self.cards = []
@@ -300,24 +300,38 @@ class OptimizedScrollArea(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         
-        # Estilo simple del scroll
+        # Estilo limpio del scroll SIN BOTONES
         self.setStyleSheet("""
             QScrollArea {
                 background-color: #fafafa;
                 border: none;
             }
             QScrollBar:vertical {
-                background-color: #f1f1f1;
-                width: 12px;
-                border-radius: 6px;
+                background-color: #f1f5f9;
+                width: 10px;
+                border-radius: 5px;
+                margin: 0px;
             }
             QScrollBar::handle:vertical {
-                background-color: #c1c1c1;
-                border-radius: 6px;
-                min-height: 20px;
+                background-color: #cbd5e1;
+                border-radius: 5px;
+                min-height: 30px;
             }
             QScrollBar::handle:vertical:hover {
-                background-color: #a8a8a8;
+                background-color: #94a3b8;
+            }
+            QScrollBar::handle:vertical:pressed {
+                background-color: #64748b;
+            }
+            /* OCULTAR BOTONES DE ARRIBA Y ABAJO */
+            QScrollBar::add-line:vertical {
+                height: 0px;
+            }
+            QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
             }
         """)
         
@@ -422,9 +436,9 @@ class ArgosGUI(QWidget):
         self.timer.start(15000)
 
     def create_header(self):
-        """Header simple y limpio"""
+        """Header simple y limpio sin problemas de altura"""
         header = QFrame()
-        header.setFixedHeight(80)
+        header.setFixedHeight(70)
         header.setStyleSheet("""
             QFrame {
                 background: qlineargradient(
@@ -433,54 +447,37 @@ class ArgosGUI(QWidget):
                     stop: 1 #6366f1
                 );
                 border-radius: 12px;
-                padding: 20px;
             }
         """)
         
         layout = QHBoxLayout(header)
-        layout.setContentsMargins(20, 15, 20, 15)
+        layout.setContentsMargins(24, 0, 24, 0)
+        layout.setSpacing(20)
         
-        # Título simple
-        title = QLabel("Vigia Escolar - ARGOS")
-        title.setFont(QFont("Segoe UI", 15, QFont.Bold))
+        # Título
+        title = QLabel("Vigia Escolar ARGOS")
+        title.setFont(QFont("Segoe UI", 16, QFont.Bold))
         title.setStyleSheet("color: white; background: transparent;")
         
-        # Stats simples
-        stats = self.create_simple_stats()
-        
-        layout.addWidget(title)
-        layout.addStretch()
-        layout.addWidget(stats)
-        
-        return header
-        
-    def create_simple_stats(self):
-        """Panel de estadísticas simple"""
-        stats_container = QFrame()
-        stats_container.setStyleSheet("""
-            QFrame {
-                background: rgba(255, 255, 255, 0.2);
-                border-radius: 8px;
-                padding: 20px;
-            }
-        """)
-        
-        layout = QVBoxLayout(stats_container)
-        layout.setSpacing(4)
-        
+        # Stats en línea horizontal simple
         today_count = len(self.get_images_for_day(0))
         yesterday_count = len(self.get_images_for_day(1))
         
-        today_label = QLabel(f"Hoy: {today_count}")
-        yesterday_label = QLabel(f"Ayer: {yesterday_count}")
+        stats_label = QLabel(f"📊 Hoy: {today_count}  |  Ayer: {yesterday_count}")
+        stats_label.setStyleSheet("""
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 13px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 8px 16px;
+            border-radius: 6px;
+        """)
         
-        for label in [today_label, yesterday_label]:
-            label.setStyleSheet("color: white; font-size: 12px; font-weight: bold; background: transparent;")
+        layout.addWidget(title)
+        layout.addStretch()
+        layout.addWidget(stats_label)
         
-        layout.addWidget(today_label)
-        layout.addWidget(yesterday_label)
-        
-        return stats_container
+        return header
 
     def create_control_panel(self):
         """Panel de control simple"""
