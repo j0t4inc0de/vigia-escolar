@@ -187,94 +187,47 @@ class CleanImageCard(QFrame):
             self.clicked.emit(self.image_path)
 
 class ModernImageViewer(QDialog):
-    """Visor de imágenes moderno simplificado"""
-    def __init__(self, image_path, parent=None):
+    """Visor de imágenes con zoom, pan y navegación"""
+    def __init__(self, image_paths, current_index, parent=None):
         super().__init__(parent)
-        self.image_path = image_path
+        self.image_paths = image_paths  # Lista completa de imágenes
+        self.current_index = current_index
+        self.zoom_level = 1.0
         self.setup_ui()
+        self.load_current_image()
         
     def setup_ui(self):
-        self.setWindowTitle("🔍 Visor de Evidencia")
+        self.setWindowTitle("🔍 Visor de Evidencia ARGOS")
         self.setModal(True)
         
         # Pantalla completa redimensionable
         screen = QDesktopWidget().screenGeometry()
-        self.resize(min(1200, screen.width() - 100), min(800, screen.height() - 100))
+        self.resize(min(1400, screen.width() - 100), min(900, screen.height() - 100))
         
         # Layout principal
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(0)
         main_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Header simple
-        header = QFrame()
-        header.setStyleSheet("""
-            QFrame {
-                background: #2563eb;
-                padding: 16px;
-            }
-        """)
-        
-        header_layout = QHBoxLayout(header)
-        
-        title = QLabel(f" Evidencia ARGOS")
-        title.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
-        
-        filename = os.path.basename(self.image_path)
-        info = QLabel(f"📁 {filename}")
-        info.setStyleSheet("color: #e2e8f0; font-size: 14px;")
-        info.setAlignment(Qt.AlignRight)
-        
-        header_layout.addWidget(title)
-        header_layout.addWidget(info)
+        # Header con info
+        header = self.create_header()
         main_layout.addWidget(header)
         
-        # Área de imagen
+        # Área de imagen con zoom y pan
         self.graphics_view = QGraphicsView()
         self.graphics_scene = QGraphicsScene()
         self.graphics_view.setScene(self.graphics_scene)
         self.graphics_view.setRenderHint(QPainter.Antialiasing)
+        self.graphics_view.setRenderHint(QPainter.SmoothPixmapTransform)
         
-        # Cargar imagen
-        pixmap = QPixmap(self.image_path)
-        if not pixmap.isNull():
-            self.graphics_scene.addPixmap(pixmap)
-            self.graphics_view.fitInView(
-                self.graphics_scene.itemsBoundingRect(),
-                Qt.KeepAspectRatio
-            )
+        # Habilitar drag y scroll
+        self.graphics_view.setDragMode(QGraphicsView.ScrollHandDrag)
+        self.graphics_view.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         
         main_layout.addWidget(self.graphics_view)
         
-        # Footer simple
-        footer = QFrame()
-        footer.setStyleSheet("""
-            QFrame {
-                background-color: #374151;
-                padding: 12px;
-            }
-        """)
-        
-        footer_layout = QHBoxLayout(footer)
-        
-        close_btn = QPushButton("Cerrar")
-        close_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #6b7280;
-                color: white;
-                padding: 8px 16px;
-                border-radius: 6px;
-                border: none;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #4b5563;
-            }
-        """)
-        close_btn.clicked.connect(self.close)
-        
-        footer_layout.addStretch()
-        footer_layout.addWidget(close_btn)
+        # Footer con controles
+        footer = self.create_footer()
         main_layout.addWidget(footer)
         
         # Estilo general
@@ -287,6 +240,257 @@ class ModernImageViewer(QDialog):
                 border: none;
             }
         """)
+        
+    def create_header(self):
+        """Header con metadata"""
+        header = QFrame()
+        header.setStyleSheet("""
+            QFrame {
+                background: #2563eb;
+                padding: 16px;
+            }
+        """)
+        
+        layout = QHBoxLayout(header)
+        
+        # Título
+        title = QLabel("🔍 Evidencia ARGOS")
+        title.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
+        
+        # Metadata panel
+        self.metadata_label = QLabel()
+        self.metadata_label.setStyleSheet("color: #e2e8f0; font-size: 13px;")
+        self.metadata_label.setAlignment(Qt.AlignRight)
+        
+        # Contador de imágenes
+        self.counter_label = QLabel()
+        self.counter_label.setStyleSheet("""
+            color: white;
+            font-size: 12px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+        """)
+        
+        layout.addWidget(title)
+        layout.addStretch()
+        layout.addWidget(self.metadata_label)
+        layout.addWidget(self.counter_label)
+        
+        return header
+        
+    def create_footer(self):
+        """Footer con controles de navegación y zoom"""
+        footer = QFrame()
+        footer.setStyleSheet("""
+            QFrame {
+                background-color: #374151;
+                padding: 12px;
+            }
+        """)
+        
+        layout = QHBoxLayout(footer)
+        layout.setSpacing(12)
+        
+        # Botones de navegación
+        self.prev_btn = QPushButton("⬅️ Anterior")
+        self.prev_btn.setStyleSheet(self.get_footer_btn_style())
+        self.prev_btn.clicked.connect(self.prev_image)
+        
+        self.next_btn = QPushButton("Siguiente ➡️")
+        self.next_btn.setStyleSheet(self.get_footer_btn_style())
+        self.next_btn.clicked.connect(self.next_image)
+        
+        # Botones de zoom
+        zoom_out_btn = QPushButton("🔍-")
+        zoom_out_btn.setStyleSheet(self.get_footer_btn_style())
+        zoom_out_btn.clicked.connect(self.zoom_out)
+        
+        zoom_reset_btn = QPushButton("100%")
+        zoom_reset_btn.setStyleSheet(self.get_footer_btn_style())
+        zoom_reset_btn.clicked.connect(self.zoom_reset)
+        
+        zoom_in_btn = QPushButton("🔍+")
+        zoom_in_btn.setStyleSheet(self.get_footer_btn_style())
+        zoom_in_btn.clicked.connect(self.zoom_in)
+        
+        # Label de zoom
+        self.zoom_label = QLabel("100%")
+        self.zoom_label.setStyleSheet("color: #e5e7eb; font-size: 12px; font-weight: bold;")
+        
+        # Botón cerrar
+        close_btn = QPushButton("❌ Cerrar")
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #ef4444;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 6px;
+                border: none;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #dc2626;
+            }
+        """)
+        close_btn.clicked.connect(self.close)
+        
+        # Layout
+        layout.addWidget(self.prev_btn)
+        layout.addWidget(self.next_btn)
+        layout.addStretch()
+        layout.addWidget(zoom_out_btn)
+        layout.addWidget(self.zoom_label)
+        layout.addWidget(zoom_in_btn)
+        layout.addWidget(zoom_reset_btn)
+        layout.addStretch()
+        layout.addWidget(close_btn)
+        
+        return footer
+        
+    def get_footer_btn_style(self):
+        return """
+            QPushButton {
+                background-color: #6b7280;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 6px;
+                border: none;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #4b5563;
+            }
+            QPushButton:disabled {
+                background-color: #4b5563;
+                color: #9ca3af;
+            }
+        """
+        
+    def load_current_image(self):
+        """Cargar imagen actual con metadata"""
+        self.graphics_scene.clear()
+        self.zoom_level = 1.0
+        
+        image_path = self.image_paths[self.current_index]
+        
+        # Cargar imagen
+        pixmap = QPixmap(image_path)
+        if not pixmap.isNull():
+            self.graphics_scene.addPixmap(pixmap)
+            self.graphics_view.fitInView(
+                self.graphics_scene.itemsBoundingRect(),
+                Qt.KeepAspectRatio
+            )
+        
+        # Actualizar metadata
+        self.update_metadata(image_path)
+        
+        # Actualizar contador
+        self.counter_label.setText(f"{self.current_index + 1} / {len(self.image_paths)}")
+        
+        # Actualizar botones de navegación
+        self.prev_btn.setEnabled(self.current_index > 0)
+        self.next_btn.setEnabled(self.current_index < len(self.image_paths) - 1)
+        
+    def update_metadata(self, image_path):
+        """Extraer y mostrar metadata"""
+        filename = os.path.basename(image_path)
+        
+        # Extraer fecha y hora del nombre del archivo
+        try:
+            parts = filename.replace(".jpg", "").split("_")
+            if len(parts) >= 3:
+                date_str = parts[1]  # YYYYMMDD
+                time_str = parts[2]  # HHMMSS
+                
+                dt = datetime.strptime(date_str + time_str, "%Y%m%d%H%M%S")
+                fecha = dt.strftime("%d/%m/%Y")
+                hora = dt.strftime("%H:%M:%S")
+            else:
+                fecha = "Desconocida"
+                hora = "Desconocida"
+        except:
+            fecha = "Desconocida"
+            hora = "Desconocida"
+        
+        # Obtener tamaño del archivo
+        try:
+            size_bytes = os.path.getsize(image_path)
+            if size_bytes < 1024:
+                size_str = f"{size_bytes} B"
+            elif size_bytes < 1024 * 1024:
+                size_str = f"{size_bytes / 1024:.1f} KB"
+            else:
+                size_str = f"{size_bytes / (1024 * 1024):.1f} MB"
+        except:
+            size_str = "Desconocido"
+        
+        # Mostrar metadata
+        metadata_text = f"📅 {fecha}  |  🕐 {hora}  |  📦 {size_str}"
+        self.metadata_label.setText(metadata_text)
+        
+    def zoom_in(self):
+        """Zoom in"""
+        self.zoom_level *= 1.2
+        self.graphics_view.scale(1.2, 1.2)
+        self.update_zoom_label()
+        
+    def zoom_out(self):
+        """Zoom out"""
+        self.zoom_level /= 1.2
+        self.graphics_view.scale(1/1.2, 1/1.2)
+        self.update_zoom_label()
+        
+    def zoom_reset(self):
+        """Reset zoom"""
+        self.graphics_view.resetTransform()
+        self.zoom_level = 1.0
+        self.graphics_view.fitInView(
+            self.graphics_scene.itemsBoundingRect(),
+            Qt.KeepAspectRatio
+        )
+        self.update_zoom_label()
+        
+    def update_zoom_label(self):
+        """Actualizar label de zoom"""
+        zoom_percent = int(self.zoom_level * 100)
+        self.zoom_label.setText(f"{zoom_percent}%")
+        
+    def prev_image(self):
+        """Imagen anterior"""
+        if self.current_index > 0:
+            self.current_index -= 1
+            self.load_current_image()
+            
+    def next_image(self):
+        """Imagen siguiente"""
+        if self.current_index < len(self.image_paths) - 1:
+            self.current_index += 1
+            self.load_current_image()
+            
+    def wheelEvent(self, event):
+        """Zoom con rueda del mouse"""
+        if event.angleDelta().y() > 0:
+            self.zoom_in()
+        else:
+            self.zoom_out()
+            
+    def keyPressEvent(self, event):
+        """Navegación con teclado"""
+        if event.key() == Qt.Key_Left:
+            self.prev_image()
+        elif event.key() == Qt.Key_Right:
+            self.next_image()
+        elif event.key() == Qt.Key_Escape:
+            self.close()
+        elif event.key() == Qt.Key_Plus or event.key() == Qt.Key_Equal:
+            self.zoom_in()
+        elif event.key() == Qt.Key_Minus:
+            self.zoom_out()
+        elif event.key() == Qt.Key_0:
+            self.zoom_reset()
 
 class OptimizedScrollArea(QScrollArea):
     """ScrollArea optimizado sin botones de scroll"""
@@ -455,7 +659,7 @@ class ArgosGUI(QWidget):
         layout.setSpacing(20)
         
         # Título
-        title = QLabel("Vigia Escolar ARGOS")
+        title = QLabel(" Vigia Escolar ARGOS")
         title.setFont(QFont("Segoe UI", 16, QFont.Bold))
         title.setStyleSheet("color: white; background: transparent;")
         
@@ -637,8 +841,17 @@ class ArgosGUI(QWidget):
             self.path_to_card[path].set_image(pixmap, from_cache)
 
     def show_image_viewer(self, image_path):
-        """Mostrar visor"""
-        viewer = ModernImageViewer(image_path, self)
+        """Mostrar visor con navegación"""
+        # Obtener lista completa de imágenes del tab actual
+        images = self.get_images_for_day(self.current_tab)
+        
+        # Encontrar índice de la imagen clickeada
+        try:
+            current_index = images.index(image_path)
+        except ValueError:
+            current_index = 0
+            
+        viewer = ModernImageViewer(images, current_index, self)
         viewer.exec_()
 
     def extract_timestamp(self, img_path):
