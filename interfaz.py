@@ -575,6 +575,7 @@ class ArgosGUI(QWidget):
         self.image_cache = ImageCache()
         self.executor = ThreadPoolExecutor(max_workers=4)
         self.image_loaders = []
+        self.path_to_card = {}  # Diccionario global para mapear paths a cards
         
         self.process = None
         self.current_tab = 0
@@ -832,7 +833,11 @@ class ArgosGUI(QWidget):
         loader.imageLoaded.connect(self.on_image_loaded)
         
         self.image_loaders.append(loader)
-        self.path_to_card = {card.image_path: card for card in cards}
+        
+        # ACTUALIZAR el diccionario en lugar de sobrescribir
+        for card in cards:
+            self.path_to_card[card.image_path] = card
+            
         loader.start()
         
     def on_image_loaded(self, path, pixmap, from_cache):
@@ -920,13 +925,16 @@ class ArgosGUI(QWidget):
             loader.stop()
         self.image_loaders.clear()
         
+        # Limpiar diccionario de cards para evitar referencias antiguas
+        self.path_to_card.clear()
+        
         self.refresh_tabs()
 
     def launch_camera(self):
         """Lanzar cámara"""
         try:
-            # self.process = subprocess.Popen(["python", DETECCION_SCRIPT]) #Esto usa el python del sistema
-            self.process = subprocess.Popen([sys.executable, DETECCION_SCRIPT]) # Este usa el python del venv
+            # Usar sys.executable para usar el mismo Python del venv activo
+            self.process = subprocess.Popen([sys.executable, DETECCION_SCRIPT])
             self.camera_btn.setEnabled(False)
             self.return_btn.show()
             self.status_label.setText("🔴 Detección Activa")
